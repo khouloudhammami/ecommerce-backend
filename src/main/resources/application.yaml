@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: ecommerce-backend
+  # Configuration de la DataSource
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ecommerce_db
+    username: admin
+    password: admin123
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10 # Pool de connexions pour les hautes performances
+
+  # Configuration JPA / Hibernate
+  jpa:
+    hibernate:
+      ddl-auto: validate # <<< Ici on met 'create' pour la première exécution, puis 'validate'
+    show-sql: true # Affiche les requêtes SQL dans la console (utile pour debug)
+    properties:
+      hibernate:
+        format_sql: true # Formatte les requêtes SQL pour les rendre lisibles
+        dialect: org.hibernate.dialect.PostgreSQLDialect # Dialecte spécifique à Postgres
+
+  # Sécurité (on désactive le filtre par défaut le temps de coder, sinon il bloque tout)
+  #security:
+    #user:
+      #password: ignored # On override plus tard avec notre propre config
+
+# Configuration pour Kafka 
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: ecommerce-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"  
