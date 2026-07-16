@@ -18,7 +18,7 @@ public class Inventory {
     private Integer quantity; // Stock actuel
     
     @Column(nullable = false)
-    private Integer reservedQuantity; // Quantité réservée par des commandes en attente de paiement
+    private Integer reservedQuantity = 0; // Quantité réservée par des commandes en attente de paiement
 
     // La clé étrangère vers Product (le côté propriétaire de la relation OneToOne)
     @OneToOne(fetch = FetchType.LAZY)
