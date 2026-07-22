@@ -5,6 +5,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.math.BigDecimal;
 import com.retail.ecommerce_backend.model.enums.*;
 
 @Entity
@@ -19,7 +20,7 @@ public class Order {
     private Long id;
 
     @Column(nullable = false)
-    private Double totalAmount;
+    private BigDecimal totalAmount;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
