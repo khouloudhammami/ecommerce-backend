@@ -1,6 +1,7 @@
 spring:
   application:
     name: ecommerce-backend
+  
   # Configuration de la DataSource
   datasource:
     url: jdbc:postgresql://localhost:5432/ecommerce_db
@@ -13,7 +14,7 @@ spring:
   # Configuration JPA / Hibernate
   jpa:
     hibernate:
-      ddl-auto: validate # <<< Ici on met 'create' pour la première exécution, puis 'validate'
+      ddl-auto: update # <<< Ici on met 'create' pour la première exécution, puis 'validate'
     show-sql: true # Affiche les requêtes SQL dans la console (utile pour debug)
     properties:
       hibernate:
@@ -29,11 +30,27 @@ spring:
   kafka:
     bootstrap-servers: localhost:9092
     producer:
+      # Clé : on utilise String
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      # Valeur : on utilise JSON (Spring va automatiquement gérer les Records)
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      # Propriétés avancées pour éviter la perte de messages
+      properties:
+        # Indique à Kafka d'attendre que le leader ait écrit le message avant de répondre (acks=all)
+        acks: all
+        # Nombre de tentatives en cas d'échec réseau
+        retries: 10
+        # Permet d'écrire les messages en batch pour les performances
+        batch.size: 16384
+        # Désactive l'ajout d'en-têtes de type (compatible avec les consumers plus anciens)
+        spring.json.add.type.headers: false
     consumer:
       group-id: ecommerce-group
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
-        spring.json.trusted.packages: "*"  
+        # Indique au consommateur quels packages sont "sûrs" pour la désérialisation (sécurité)
+        spring.json.trusted.packages: "*"
+        # Permet de lire les messages depuis le début si on rejoint un nouveau groupe
+        auto.offset.reset: earliest
+    

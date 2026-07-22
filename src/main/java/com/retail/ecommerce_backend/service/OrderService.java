@@ -3,16 +3,22 @@ package com.retail.ecommerce_backend.service;
 import com.retail.ecommerce_backend.dto.OrderItemRequest;
 import com.retail.ecommerce_backend.dto.OrderRequest;
 import com.retail.ecommerce_backend.dto.OrderResponse;
+import com.retail.ecommerce_backend.event.OrderPlacedEvent;
 import com.retail.ecommerce_backend.model.*;
 import com.retail.ecommerce_backend.model.enums.OrderStatus;
 import com.retail.ecommerce_backend.repository.InventoryRepository;
 import com.retail.ecommerce_backend.repository.OrderRepository;
 import com.retail.ecommerce_backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.context.ApplicationEventPublisher; 
+import com.retail.ecommerce_backend.event.OrderPlacedEvent; 
+
 
 import java.time.LocalDateTime;
 import java.math.BigDecimal;
@@ -21,10 +27,15 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j //Lombok crée la variable 'log' automatiquement sous le capot !
 public class OrderService {
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
     private final InventoryRepository inventoryRepository;
+    //Injection du publisher d'événements Spring
+    private final ApplicationEventPublisher eventPublisher;
+  
+
 
     //  Le @Transactional est OBLIGATOIRE ici.
     // Il garantit :
@@ -98,7 +109,22 @@ public class OrderService {
         // Cela va faire un INSERT dans "orders" et plusieurs INSERT dans "order_item".
         Order savedOrder = orderRepository.save(order);
 
-        // 10. On construit la réponse propre à renvoyer au frontend
+        // 10. 🚀 PUBLICATION DE L'ÉVÉNEMENT (MAINTENANT QUE LA BDD EST COMMITÉE)
+        // On crée l'événement avec les données de la commande fraîchement créée
+        OrderPlacedEvent event = new OrderPlacedEvent(
+                savedOrder.getId(),
+                savedOrder.getUser().getId(),
+                savedOrder.getTotalAmount(),
+                savedOrder.getOrderDate()
+        );
+        // Spring va propager cet événement à tous les beans qui l'écoutent (@EventListener)
+        // Comme notre OrderEventListener écoute en phase AFTER_COMMIT, il attendra que 
+        // cette méthode @Transactional soit terminée (commit) avant d'envoyer sur Kafka.
+        eventPublisher.publishEvent(event);
+        log.info("📦 Événement OrderPlacedEvent publié dans Spring pour l'orderId : {}", savedOrder.getId());
+
+        // 11. On retourne la réponse (le frontend n'attend pas que Kafka ait fini)
+
         return mapToResponse(savedOrder);
     }
 
