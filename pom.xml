@@ -115,6 +115,12 @@
 			<artifactId>jjwt-api</artifactId>
 			<version>0.12.5</version>
 		</dependency>
+		<!-- Swagger / OpenAPI 3 pour Spring Boot 3 -->
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+			<version>2.5.0</version>
+		</dependency>
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
 			<artifactId>jjwt-impl</artifactId>
