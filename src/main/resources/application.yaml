@@ -20,11 +20,11 @@ spring:
       hibernate:
         format_sql: true # Formatte les requêtes SQL pour les rendre lisibles
         dialect: org.hibernate.dialect.PostgreSQLDialect # Dialecte spécifique à Postgres
-
+  
   # Sécurité (on désactive le filtre par défaut le temps de coder, sinon il bloque tout)
   #security:
     #user:
-      #password: ignored # On override plus tard avec notre propre config
+      #password: ignored # On override plus tard avec   notre propre config
 
 # Configuration pour Kafka 
   kafka:
@@ -53,4 +53,8 @@ spring:
         spring.json.trusted.packages: "*"
         # Permet de lire les messages depuis le début si on rejoint un nouveau groupe
         auto.offset.reset: earliest
+jwt:
+  # En production, ne JAMAIS commit cette clé. On utilise ${JWT_SECRET} en variable d'environnement.
+  secret: "9a4f2c8d3e1b7a6f5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1"
+  expiration: 86400000 # 24 heures en millisecondes        
     
