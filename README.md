@@ -1,1 +1,1 @@
-![CI](https://github.com/khouloudhammami-github/ecommerce-backend/actions/workflows/ci-backend.yml/badge.svg)
+![CI](https://github.com/khouloudhammami/ecommerce-backend/actions/workflows/ci-backend.yml/badge.svg?branch=feature/github-actions)
