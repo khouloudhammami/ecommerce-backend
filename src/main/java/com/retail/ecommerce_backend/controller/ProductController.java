@@ -3,6 +3,8 @@ package com.retail.ecommerce_backend.controller;
 import com.retail.ecommerce_backend.dto.ProductRequest;
 import com.retail.ecommerce_backend.dto.ProductResponse;
 import com.retail.ecommerce_backend.service.ProductService;
+
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -19,6 +21,7 @@ public class ProductController {
      private final ProductService productService;
 
     @PostMapping
+    @Operation(summary = "Récupérer tous les produits", description = "Retourne la liste complète des produits avec leur stock.")
     public ResponseEntity<ProductResponse> createProduct(@Valid @RequestBody ProductRequest request) {
         // @Valid active les validations (NotBlank, Min) du DTO.
         // @RequestBody déserialise le JSON reçu en objet Java.
