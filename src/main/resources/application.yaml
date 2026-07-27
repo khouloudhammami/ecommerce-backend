@@ -1,60 +1,49 @@
 spring:
   application:
     name: ecommerce-backend
-  
-  # Configuration de la DataSource
+
   datasource:
-    url: jdbc:postgresql://localhost:5432/ecommerce_db
-    username: admin
-    password: admin123
+    # 🔥 On utilise une variable d'environnement, avec fallback sur localhost pour le dev local
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/ecommerce_db}
+    username: ${SPRING_DATASOURCE_USERNAME:admin}
+    password: ${SPRING_DATASOURCE_PASSWORD:admin123}
     driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: 10 # Pool de connexions pour les hautes performances
+      maximum-pool-size: 10
 
-  # Configuration JPA / Hibernate
   jpa:
     hibernate:
-      ddl-auto: update # <<< Ici on met 'create' pour la première exécution, puis 'validate'
-    show-sql: true # Affiche les requêtes SQL dans la console (utile pour debug)
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:validate}
+    show-sql: true
     properties:
       hibernate:
-        format_sql: true # Formatte les requêtes SQL pour les rendre lisibles
-        dialect: org.hibernate.dialect.PostgreSQLDialect # Dialecte spécifique à Postgres
-  
-  # Sécurité (on désactive le filtre par défaut le temps de coder, sinon il bloque tout)
-  #security:
-    #user:
-      #password: ignored # On override plus tard avec   notre propre config
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
 
-# Configuration pour Kafka 
   kafka:
-    bootstrap-servers: localhost:9092
+    # 🔥 Pareil ici : si on est dans Docker, on utilise "kafka:9092", sinon "localhost:9092"
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:
-      # Clé : on utilise String
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      # Valeur : on utilise JSON (Spring va automatiquement gérer les Records)
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-      # Propriétés avancées pour éviter la perte de messages
       properties:
-        # Indique à Kafka d'attendre que le leader ait écrit le message avant de répondre (acks=all)
         acks: all
-        # Nombre de tentatives en cas d'échec réseau
         retries: 10
-        # Permet d'écrire les messages en batch pour les performances
         batch.size: 16384
-        # Désactive l'ajout d'en-têtes de type (compatible avec les consumers plus anciens)
         spring.json.add.type.headers: false
     consumer:
       group-id: ecommerce-group
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
-        # Indique au consommateur quels packages sont "sûrs" pour la désérialisation (sécurité)
         spring.json.trusted.packages: "*"
-        # Permet de lire les messages depuis le début si on rejoint un nouveau groupe
         auto.offset.reset: earliest
+
 jwt:
-  # En production, ne JAMAIS commit cette clé. On utilise ${JWT_SECRET} en variable d'environnement.
-  secret: "9a4f2c8d3e1b7a6f5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1"
-  expiration: 86400000 # 24 heures en millisecondes        
-    
+  secret: ${JWT_SECRET:9a4f2c8d3e1b7a6f5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1}
+  expiration: ${JWT_EXPIRATION:86400000}
+
+server:
+  # Pour que le container écoute bien sur toutes les interfaces (0.0.0.0)
+  address: ${SERVER_ADDRESS:localhost}
+  port: ${SERVER_PORT:8080}

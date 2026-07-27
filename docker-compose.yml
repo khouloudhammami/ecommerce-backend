@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+  # 1. BASE DE DONNÉES (PostgreSQL)
   postgres:
     image: postgres:16-alpine
     container_name: ecommerce-db
@@ -9,47 +10,76 @@ services:
       POSTGRES_PASSWORD: admin123
       POSTGRES_DB: ecommerce_db
     ports:
-      - "5432:5432"
+      - "5432:5432" # Exposé pour qu'on puisse se connecter en local avec DBeaver/IntelliJ
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - ecommerce-network
     restart: unless-stopped
 
+  # 2. ZOOKEEPER (nécessaire pour Kafka)
   zookeeper:
-    image: confluentinc/cp-zookeeper:7.5.0
+    image: confluentinc/cp-zookeeper:latest
     container_name: ecommerce-zookeeper
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
     ports:
       - "2181:2181"
+    networks:
+      - ecommerce-network
+    restart: unless-stopped
 
+  # 3. KAFKA (Broker)
   kafka:
-    image: confluentinc/cp-kafka:7.5.0
+    image: confluentinc/cp-kafka:latest
     container_name: ecommerce-kafka
     depends_on:
       - zookeeper
-    ports:
-      - "9092:9092"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      # On configure deux canaux : 9092 pour ton PC, 29092 pour les conteneurs Docker
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      # ⚠️ CRUCIAL : On annonce "kafka:9092" pour la communication INTERNE (entre conteneurs)
+      # et "localhost:9092" pour la communication EXTERNE (depuis notre IDE si on veut)
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-
-  kafdrop:
-    image: obsidiandynamics/kafdrop:latest
-    container_name: ecommerce-kafdrop
-    depends_on:
-      - kafka
     ports:
-      - "9000:9000"
-    environment:
-      # Kafdrop utilise le canal interne sur le port 29092
-      KAFKA_BROKERCONNECT: kafka:29092
-      JVM_OPTS: "-Xms32M -Xmx64M"
+      - "9092:9092"
+    networks:
+      - ecommerce-network
+    restart: unless-stopped
 
+  # 4. NOTRE APPLICATION BACKEND (Spring Boot)
+  backend:
+    build:
+      context: . # Où se trouve le Dockerfile (à la racine)
+      dockerfile: Dockerfile
+    container_name: ecommerce-backend
+    depends_on:
+      - postgres
+      - kafka
+    environment:
+      # On override les propriétés Spring avec des variables d'environnement
+      # (Ceci est plus sûr que de hardcoder dans application.yml)
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ecommerce_db
+      SPRING_DATASOURCE_USERNAME: admin
+      SPRING_DATASOURCE_PASSWORD: admin123
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate # On met en validate pour l'exemple
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      # Pour que Swagger soit accessible depuis l'hôte, on force le host
+      SERVER_ADDRESS: 0.0.0.0
+    ports:
+      - "8080:8080" # On expose l'API sur le port 8080 de la machine hôte
+    networks:
+      - ecommerce-network
+    restart: unless-stopped
+
+# 5. VOLUMES (pour persister la BDD)
 volumes:
   postgres_data:
+
+# 6. RÉSEAU INTERNE (pour permettre la communication entre les conteneurs par leurs noms)
+networks:
+  ecommerce-network:
+    driver: bridge

@@ -1,0 +1,79 @@
+# 1. Nom du workflow (visible dans l'onglet "Actions" de GitHub)
+name: CI - Backend Spring Boot
+
+# 2. Quand ce workflow s'exécute-t-il ?
+on:
+  # A chaque fois qu'on pousse du code sur la branche "main" ou "develop"
+  push:
+    branches: [ "main", "develop" ]
+  # A chaque fois qu'on ouvre ou met à jour une Pull Request vers "main"
+  pull_request:
+    branches: [ "main" ]
+  # Permet de le lancer manuellement depuis l'UI GitHub (bouton "Run workflow")
+  workflow_dispatch:
+
+# 3. Que doit faire ce workflow ?
+jobs:
+  # On définit un job appelé "build-and-test"
+  build-and-test:
+    # On utilise un runner Ubuntu (le plus rapide et le moins cher)
+    runs-on: ubuntu-latest
+
+    # 4. Séquence des étapes
+    steps:
+      # Etape 1 : Récupérer le code source du repo
+      - name: 📥 Checkout du code
+        uses: actions/checkout@v4
+        # 'uses' signifie qu'on appelle une action prédéfinie par la communauté GitHub
+
+      # Etape 2 : Installer Java 21 (Temurin est la distribution OpenJDK de référence)
+      - name: ☕ Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin' # On utilise Temurin (adoptium)
+          java-version: '21'
+
+      # Etape 3 : Mise en cache des dépendances Maven (TRÈS IMPORTANT)
+      # Sans ça, le workflow téléchargerait internet à chaque fois (perte de temps)
+      - name: 💾 Cache des dépendances Maven
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository # Le dossier où Maven stocke les librairies
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      # Etape 4 : Exécuter les tests unitaires et compiler le JAR
+      - name: 🧪 Build & Test avec Maven
+        run: |
+          # On exécute 'clean verify' :
+          # - clean : nettoie le dossier target
+          # - verify : compile, exécute les tests, et vérifie que le JAR est valide
+          # On utilise le wrapper mvnw (pour ne pas dépendre d'une installation globale)
+          chmod +x mvnw # On rend le script exécutable (nécessaire sur Linux)
+          ./mvnw clean verify --no-transfer-progress
+        # Le flag --no-transfer-progress rend les logs moins bavards (plus lisibles)
+
+      # Etape 5 : Upload des résultats des tests (optionnel mais super utile)
+      # Si un test échoue, on pourra consulter le rapport détaillé directement dans GitHub
+      - name: 📊 Upload des rapports de test
+        if: always() # On exécute cette étape même si les tests échouent
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-backend
+          path: target/surefire-reports/ # Le dossier où JUnit écrit ses rapports XML
+
+      # Etape 6 : (Optionnel) Analyse SonarQube/SonarCloud
+      # Pour activer ça, il faut créer un token sur sonarcloud.io et le mettre dans les secrets GitHub
+      - name: 🕵️ Analyse SonarCloud (Optionnelle)
+        # On n'exécute cette étape que si le secret SONAR_TOKEN est défini dans le repo
+        if: env.SONAR_TOKEN != ''
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          # On lance l'analyse Sonar en ajoutant le plugin au build
+          ./mvnw sonar:sonar \
+            -Dsonar.projectKey=ecommerce-backend \
+            -Dsonar.organization=ton-org-gh \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.token=$SONAR_TOKEN
