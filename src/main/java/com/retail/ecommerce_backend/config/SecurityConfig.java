@@ -34,10 +34,10 @@ public class SecurityConfig {
 
     // Provider qui combine notre UserDetailsService et notre PasswordEncoder
     @Bean
-    public AuthenticationProvider authenticationProvider() {
-        // Le constructeur attend le UserDetailsService en paramètre !
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider(userDetailsService);
-        authProvider.setPasswordEncoder(passwordEncoder());
+    public AuthenticationProvider authenticationProvider(CustomUserDetailsService userDetailsService, PasswordEncoder passwordEncoder) {
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
+        authProvider.setUserDetailsService(userDetailsService); // 👈 userDetailsService ici
+        authProvider.setPasswordEncoder(passwordEncoder);       // 👈 passwordEncoder ici
         return authProvider;
     }
 
@@ -49,19 +49,18 @@ public class SecurityConfig {
 
     // La configuration principale des routes et des filtres
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationProvider authenticationProvider) throws Exception {
         http
-            .csrf(csrf -> csrf.disable()) // On désactive CSRF car on est en stateless (JWT)
+            .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**").permitAll() // Les endpoints d'auth sont publics
-                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll() // Swagger public
-                .anyRequest().authenticated() // TOUT le reste est protégé (Product, Orders, etc.)
+                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                .anyRequest().authenticated()
             )
             .sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // On ne crée PAS de session HTTP
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
-            .authenticationProvider(authenticationProvider())
-            // On ajoute notre filtre JWT AVANT le filtre UsernamePasswordAuthenticationFilter par défaut
+            .authenticationProvider(authenticationProvider) // 👈 passer la variable, pas l'appel de méthode
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
