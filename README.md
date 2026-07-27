@@ -1,2 +1,4 @@
-![CI](https://github.com/Khammami-dev/ecommerce-backend/actions/workflows/ci-backend.yml/badge.svg)
+![CI](https://github.com/khouloudhammami/ecommerce-backend/actions/workflows/ci-backend.yml/badge.svg)
+
+workflow
 
